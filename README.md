@@ -36,7 +36,7 @@ The results of each training run are saved to a newly created directory  `traini
 ## Image denoising using PFGM++
 
 ## Checkpoints
-We are unfortunately not able to share the checkpoints for the, proprietary, prior CT dataset. Checkpoints for the Mayo low-dose CT dataset are available [here](https://drive.google.com/drive/folders/1mxRpIQgyuI2iDrMGgYJX-wuxzoX3NM6j?usp=drive_link). As with [PFGM++](https://github.com/Newbeeer/pfgmpp), most hyperparameters are taking directly from [EDM](https://github.com/NVlabs/edm). 
+We are unfortunately not able to share the checkpoints for the, proprietary, prior CT dataset. Checkpoints for the Mayo low-dose CT dataset are available [here](https://drive.google.com/drive/folders/1mxRpIQgyuI2iDrMGgYJX-wuxzoX3NM6j?usp=drive_link). As with [PFGM++](https://github.com/Newbeeer/pfgmpp), most hyperparameters are taken directly from [EDM](https://github.com/NVlabs/edm). 
 | Model                             | Checkpoint path                                              | $D$      |                           Options                            |
 | --------------------------------- | :----------------------------------------------------------- | -------- | :----------------------------------------------------------: |
 | ddpmpp-D-64              | [`PFGMpp_mayo_3mm_weights/D=64/`](https://drive.google.com/drive/folders/1CFNG_9Z3Aag7_C5OUEA5J2aDiighDyV3?usp=drive_link) | 64  |      `--cond=0 --arch=ddpmpp --cbase=128 --ares=16,8,4 --cres=1,1,2,2,2,2,2 --lr=2e-4 --dropout=0.1 --augment=0.15 --patch_sz=256 --n_patches=1 --batch=32 --fp16=1 --seed=41 --pfgmpp=1 --aug_dim=64`       |
@@ -45,6 +45,13 @@ We are unfortunately not able to share the checkpoints for the, proprietary, pri
 | ddpmpp-D-inf (EDM)        | [`PFGMpp_mayo_3mm_weights/D=infty/`](https://drive.google.com/drive/folders/1-1eeJitL3Cg_cYUUoYC81JtT-7UF6sxz?usp=drive_link) | $\infty$ |                   `--cond=0 --arch=ddpmpp --cbase=128 --ares=16,8,4 --cres=1,1,2,2,2,2,2 --lr=2e-4 --dropout=0.1 --augment=0.15 --patch_sz=256 --n_patches=1 --batch=32 --fp16=1 --seed=41 --pfgmpp=0`                   |
 
 ## Preparing datasets 
-The Mayo dataset from the AAPM low-dose grand challenge is available [here](https://www.aapm.org/grandchallenge/lowdosect/). 
+Datasets are stored in the same format as in [StyleGAN](https://github.com/NVlabs/stylegan3): uncompressed ZIP archives containing uncompressed PNG files and a metadata file `dataset.json` for labels. Custom datasets can be created from a folder containing images; see [`python dataset_tool.py --help`](./docs/dataset-tool-help.txt) for more information.
+
+**Mayo datsaet from the AAPM low-dose grand challenge:** Download the data here [Mayo-AAPM](https://www.aapm.org/grandchallenge/lowdosect/):
+
+```.bash
+python dataset_tool_alt.py --source=./datasets_unzipped/cifar10/ \
+    --dest=datasets/mayo_3mm_alt-512x512.zip
+```
 
 ## The instructions for set-ups from EDM repo
