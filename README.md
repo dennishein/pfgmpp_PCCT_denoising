@@ -54,4 +54,10 @@ python dataset_tool_alt.py --source=./datasets_unzipped/cifar10/ \
     --dest=datasets/mayo_3mm_alt-512x512.zip
 ```
 
-## The instructions for set-ups from EDM repo
+## Instructions for setting up enviorment (from EDM)
+- Python libraries: See `environment.yml`for exact library dependencies. You can use the following commands with Miniconda3 to create and activate your Python environment:
+  - `conda env create -f environment.yml -n edm`
+  - `conda activate edm`
+- Docker users:
+  - Ensure you have correctly installed the [NVIDIA container runtime](https://docs.docker.com/config/containers/resource_constraints/#gpu).
+  - Use the [provided Dockerfile](https://github.com/dennishein/pfgmpp_PCCT_denoising/main/Dockerfile) to build an image with the required library dependencies.
