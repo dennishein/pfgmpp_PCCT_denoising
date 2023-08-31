@@ -34,6 +34,18 @@ The above example uses the default batch size of 512 images (controlled by `--ba
 The results of each training run are saved to a newly created directory  `training-runs/exp_name` . The training loop exports network snapshots `training-state-*.pt`) at regular intervals (controlled by  `--dump`). The network snapshots can be used to generate images with `generate.py`, and the training states can be used to resume the training later on (`--resume`). Other useful information is recorded in `log.txt` and `stats.jsonl`. To monitor training convergence, we recommend looking at the training loss (`"Loss/loss"` in `stats.jsonl`) as well as periodically evaluating FID for `training-state-*.pt` using `generate.py` and `fid.py`.
 
 ## Image denoising using PFGM++
+To inference on the Mayo low-dose CT validation set using the best performing model ($D=128$) run: 
+  ```zsh
+  python generate_cond.py \
+        --network=./training_runs/ddpmpp-D-128/training-state-003201.pt --data=val_mayo_3_alt --steps=64 --hijack=10 --weight=0.95 --batch=1 --aug_dim=128
+network: results used for inference 
+data: data to be used (in .pt format)
+steps: T in Algorithm 3. 
+hijack: tau=T-hijack in Algorithm 3. 
+weight: weight given to noisy condition image c. w in Algorithm 3. 
+aug_dim: D (additional dimensions)  
+```
+  
 
 ## Checkpoints
 We are unfortunately not able to share the checkpoints for the, proprietary, prior CT dataset. Checkpoints for the Mayo low-dose CT dataset are available [here](https://drive.google.com/drive/folders/1mxRpIQgyuI2iDrMGgYJX-wuxzoX3NM6j?usp=drive_link). As with [PFGM++](https://github.com/Newbeeer/pfgmpp), most hyperparameters are taken directly from [EDM](https://github.com/NVlabs/edm). 
