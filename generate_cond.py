@@ -60,20 +60,14 @@ def edm_sampler(
             x_hat = x_cur + (t_hat ** 2 - t_cur ** 2).sqrt() * S_noise * randn_like(x_cur)
 
             # Euler step.
-            if uncond_score:
-              denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
-            else:
-              denoised = net(torch.cat((conditions,x_hat),1), t_hat, class_labels).to(torch.float64)
+            denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
             d_cur = (x_hat - denoised) / t_hat
             x_next = x_hat - (t_next - t_hat) * d_cur
             NFE += 1
 
             # Apply 2nd order correction. 
             if i > 0:
-                if uncond_score:
-                  denoised = net(x_next, t_next, class_labels).to(torch.float64)
-                else:
-                  denoised = net(torch.cat((conditions,x_next),1), t_hat, class_labels).to(torch.float64)
+                denoised = net(x_next, t_next, class_labels).to(torch.float64)
                 d_prime = (x_next - denoised) / t_next
                 x_next = x_hat - (t_next - t_hat) * (0.5 * d_cur + 0.5 * d_prime)
                 NFE += 1
@@ -93,10 +87,7 @@ def edm_sampler(
           x_hat = x_cur + (t_hat ** 2 - t_cur ** 2).sqrt() * S_noise * randn_like(x_cur)
             
           # Euler step.
-          if uncond_score:
-            denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
-          else:
-            denoised = net(torch.cat((conditions,x_hat),1), t_hat, class_labels).to(torch.float64)
+          denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
           d_cur = (x_hat - denoised) / t_hat
           x_next = x_hat + (t_next - t_hat) * d_cur
           NFE += 1
@@ -104,10 +95,7 @@ def edm_sampler(
           # Apply 2nd order correction.
           final_step = hijack 
           if i < final_step - 1:
-              if uncond_score:
-                denoised = net(x_next, t_next, class_labels).to(torch.float64)
-              else:
-                denoised = net(torch.cat((conditions,x_next),1), t_hat, class_labels).to(torch.float64)
+              denoised = net(x_next, t_next, class_labels).to(torch.float64)
               d_prime = (x_next - denoised) / t_next
               x_next = x_hat + (t_next - t_hat) * (0.5 * d_cur + 0.5 * d_prime)
               NFE += 1
@@ -137,20 +125,14 @@ def edm_sampler(
             x_hat = x_cur + (t_hat ** 2 - t_cur ** 2).sqrt() * S_noise * randn_like(x_cur)
 
             # Euler step.
-            if uncond_score:
-              denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
-            else:
-              denoised = net(torch.cat((conditions,x_hat),1), t_hat, class_labels).to(torch.float64)
+            denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
             d_cur = (x_hat - denoised) / t_hat
             x_next = x_hat - (t_next - t_hat) * d_cur
             NFE += 1
 
             # Apply 2nd order correction. 
             if 1==2:#i > 0:
-                if uncond_score:
-                  denoised = net(x_next, t_next, class_labels).to(torch.float64)
-                else:
-                  denoised = net(torch.cat((conditions,x_next),1), t_hat, class_labels).to(torch.float64)
+                denoised = net(x_next, t_next, class_labels).to(torch.float64)
                 d_prime = (x_next - denoised) / t_next
                 x_next = x_hat - (t_next - t_hat) * (0.5 * d_cur + 0.5 * d_prime)
                 NFE += 1
@@ -169,20 +151,14 @@ def edm_sampler(
             x_hat = x_cur + (t_hat ** 2 - t_cur ** 2).sqrt() * S_noise * randn_like(x_cur)
 
             # Euler step.
-            if uncond_score:
-              denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
-            else:
-              denoised = net(torch.cat((conditions,x_hat),1), t_hat, class_labels).to(torch.float64)
+            denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
             d_cur = (x_hat - denoised) / t_hat
             x_next = x_hat + (t_next - t_hat) * d_cur
             NFE += 1
 
             # Apply 2nd order correction.
             if i < num_steps - 1:
-                if uncond_score:
-                  denoised = net(x_next, t_next, class_labels).to(torch.float64)
-                else:
-                  denoised = net(torch.cat((conditions,x_next),1), t_hat, class_labels).to(torch.float64)
+                denoised = net(x_next, t_next, class_labels).to(torch.float64)
                 d_prime = (x_next - denoised) / t_next
                 x_next = x_hat + (t_next - t_hat) * (0.5 * d_cur + 0.5 * d_prime)
                 NFE += 1
@@ -550,8 +526,6 @@ def main(network_pkl, data, minmax, hijack, hijack_ext, n_ch, forward, weight, u
       if conditions.size(1) == 1:
         conditions = torch.cat((conditions,conditions),1)
       conditions = map_to_zero_one_alt(conditions,minmax[0],minmax[1])
-      if n_ch > 1:
-        conditions = setup_3d(conditions,n_ch)
       seeds = [0]*conditions.size(0) # override seeds option and run same for each sample
       conditions_iterator = iter(torch.utils.data.DataLoader(dataset=conditions,batch_size=max_batch_size))
       scaler = get_data_scaler(True)
