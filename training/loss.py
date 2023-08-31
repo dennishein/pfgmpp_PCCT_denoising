@@ -139,15 +139,9 @@ class EDMLoss:
             sigma = sigma.reshape((len(sigma), 1, 1, 1))
 
             weight = (sigma ** 2 + self.sigma_data ** 2) / (sigma * self.sigma_data) ** 2
-            if images.size(1) > 1:
-              images, augment_labels = augment_pipe(images) if augment_pipe is not None else (images, None)
-              y = images[:,1:,:,:]
-              n = perturbation_x.view_as(y)  
-              images = torch.cat((images[:,0:1,:,:],y + n),1)
-            else:
-              y, augment_labels = augment_pipe(images) if augment_pipe is not None else (images, None)
-              n = perturbation_x.view_as(y)
-              images = y + n       
+            y, augment_labels = augment_pipe(images) if augment_pipe is not None else (images, None)
+            n = perturbation_x.view_as(y)
+            images = y + n       
             D_yn = net(images, sigma, labels, augment_labels=augment_labels)
         else:
             rnd_normal = torch.randn([images.shape[0], 1, 1, 1], device=images.device)
