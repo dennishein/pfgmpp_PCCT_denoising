@@ -7,7 +7,7 @@ Abstract: *Deep learning (DL) has proven to be an important tool for high qualit
 invertible mapping, via an ordinary differential equation, between an easy-to-sample prior and the data distribution of interest. In this work, we propose a method for CT image denoising based on PFGM++ that does not require paired training data. To achieve this, we adapt PFGM++ for solving inverse problems via posterior sampling, by hijacking and regularizing the sampling process. Our method incorporates score-based diffusion models (EDM) as a special case as $D\rightarrow \infty$, but additionally allows a robustness-rigidity trade-off by varying $D$. The network is efficiently trained on randomly extracted patches from clinical normal-dose CT images. The proposed method demonstrates promising performance on clinical low-dose CT images and clinical images from a prototype photon-counting system.*
 
 ## Outline
-This implementation is build upon the [PFGM++](https://github.com/Newbeeer/pfgmpp) repo which in turn builds on the [EDM](https://github.com/NVlabs/edm) repo. For transfering hyperparameters from EDM using the $r=\sigma\sqrt{D}$ formula, please see [PFGM++](https://github.com/Newbeeer/pfgmpp). Our suggested approach for image denoising via posterior sampling is shown in Algorithm 3, which adjustments to sampling algorithm in PFGM++ (Algorithm 1) highlighted in blue. Checkpoints for the [Mayo low-dose CT dataset](https://www.aapm.org/grandchallenge/lowdosect/) are provided in the [checkpoints](#checkpoints) section. 
+This implementation is build upon the [PFGM++](https://github.com/Newbeeer/pfgmpp) repo which in turn builds on the [EDM](https://github.com/NVlabs/edm) repo. For transfering hyperparameters from EDM using the $r=\sigma\sqrt{D}$ formula, please see [PFGM++](https://github.com/Newbeeer/pfgmpp). Our suggested approach for image denoising via posterior sampling is shown in Algorithm 3, with adjustments to sampling algorithm in PFGM++ (Algorithm 1) highlighted in blue. Checkpoints for the [Mayo low-dose CT dataset](https://www.aapm.org/grandchallenge/lowdosect/) are provided in the [checkpoints](#checkpoints) section. 
 
 ![schematic](assets/algos.png)
 
@@ -36,7 +36,14 @@ The results of each training run are saved to a newly created directory  `traini
 ## Image denoising using PFGM++
 
 ## Checkpoints
-Available at [here](https://drive.google.com/drive/folders/1mxRpIQgyuI2iDrMGgYJX-wuxzoX3NM6j?usp=drive_link). 
+We are unfortunately not able to share the checkpoints for the, proprietary, prior CT dataset. Checkpoints for the Mayo low-dose CT dataset are available [here](https://drive.google.com/drive/folders/1mxRpIQgyuI2iDrMGgYJX-wuxzoX3NM6j?usp=drive_link). As with [PFGM++](https://github.com/Newbeeer/pfgmpp), most hyperparameters are taking directly from [EDM](https://github.com/NVlabs/edm). Same hyperparameters, except for D, are used throughout and hence only stated once. 
+
+| Model                             | Checkpoint path                                              | $D$      |                           Options                            |
+| --------------------------------- | :----------------------------------------------------------- | -------- | :----------------------------------------------------------: |
+| ddpmpp-D-64              | [`pfgmpp/cifar10_ncsnpp_D_128/`](https://drive.google.com/drive/folders/1W_fS4zwVGQ38I0tzgDZ30r54mOqzcgTP?usp=share_link) | 128  |      `--cond=0 --arch=ncsnpp --pfgmpp=1 --aug_dim=128`       |
+| ddpmpp-D-128             | [`pfgmpp/cifar10_ncsnpp_D_2048/`](https://drive.google.com/drive/folders/1sZ7vh7o8kuXfFjK8ROWXxtEZi8Srewgo?usp=share_link) | 2048  |      `--cond=0 --arch=ncsnpp --pfgmpp=1 --aug_dim=2048`      |
+| ddpmpp-D-2048 | [`pfgmpp/cifar10_ncsnpp_D_2048_conditional/`](https://drive.google.com/drive/folders/1IADJcuoUb2wc-Dzg42-F8RjgKVSZE-Jd?usp=share_link) | 2048  |      `--cond=1 --arch=ncsnpp --pfgmpp=1 --aug_dim=2048`      |
+| ddpm-ncsnpp-D-inf (EDM)        | [`pfgmpp/cifar10_ncsnpp_D_inf/`](https://drive.google.com/drive/folders/1vDeFtbaz3bBKJIJnZAk7JVrO8GvbFJh5?usp=share_link) | $\infty$ |                   `--cond=0 --arch=ncsnpp`                   |
 
 ## Preparing datasets 
 The Mayo dataset from the AAPM low-dose grand challenge is available [here](https://www.aapm.org/grandchallenge/lowdosect/). 
