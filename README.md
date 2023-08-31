@@ -42,9 +42,9 @@ Download pretrained weights and place in ./training-runs. Currently the generate
 
 network: results used for inference 
 data: data to be used (in .pt format)
-steps: T in Algorithm 3. 
-hijack: tau=T-hijack in Algorithm 3. 
-weight: weight given to noisy condition image c. w in Algorithm 3. 
+steps: T (Algorithm 3) 
+hijack: tau=T-hijack (Algorithm 3) 
+weight: w (Algorithm 3) 
 aug_dim: D (additional dimensions)  
 ```
   
