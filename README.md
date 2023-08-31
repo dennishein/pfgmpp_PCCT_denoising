@@ -34,7 +34,7 @@ The above example uses the default batch size of 512 images (controlled by `--ba
 The results of each training run are saved to a newly created directory  `training-runs/exp_name` . The training loop exports network snapshots `training-state-*.pt`) at regular intervals (controlled by  `--dump`). The network snapshots can be used to generate images with `generate.py`, and the training states can be used to resume the training later on (`--resume`). Other useful information is recorded in `log.txt` and `stats.jsonl`. To monitor training convergence, we recommend looking at the training loss (`"Loss/loss"` in `stats.jsonl`) as well as periodically evaluating FID for `training-state-*.pt` using `generate.py` and `fid.py`.
 
 ## Image denoising using PFGM++
-Download pretrained weights and place in ./training-runs. Currently the generate_cond.py scripts requires dummy .dcm files in ./dicoms/ folder. One can easly adjust the code to circumvent this, however. To inference on the Mayo low-dose CT validation set using the best performing model ($D=128$) run: 
+Download pretrained weights and place in ./training-runs/. Currently the generate_cond.py scripts requires dummy .dcm files in ./dicoms/ folder. One can easly adjust the code to circumvent this, however. To inference on the Mayo low-dose CT validation set using the best performing model ($D=128$) run: 
   ```zsh
   python generate_cond.py \
         --network=./training_runs/ddpmpp-D-128/training-state-003201.pt --data=val_mayo_3_alt \
