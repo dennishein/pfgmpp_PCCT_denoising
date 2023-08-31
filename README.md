@@ -34,7 +34,7 @@ The results of each training run are saved to a newly created directory  `traini
 ## Image denoising using PFGM++
 
 ## Checkpoints
-Available at [here](https://www.aapm.org/grandchallenge/lowdosect/). 
+Available at [here](https://drive.google.com/drive/folders/1mxRpIQgyuI2iDrMGgYJX-wuxzoX3NM6j?usp=drive_link). 
 
 ## Preparing datasets 
 The Mayo dataset from the AAPM low-dose grand challenge is available [here](https://www.aapm.org/grandchallenge/lowdosect/). 
