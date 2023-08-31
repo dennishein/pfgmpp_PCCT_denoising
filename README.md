@@ -40,10 +40,10 @@ We are unfortunately not able to share the checkpoints for the, proprietary, pri
 
 | Model                             | Checkpoint path                                              | $D$      |                           Options                            |
 | --------------------------------- | :----------------------------------------------------------- | -------- | :----------------------------------------------------------: |
-| ddpmpp-D-64              | [`pfgmpp/cifar10_ncsnpp_D_128/`](https://drive.google.com/drive/folders/1W_fS4zwVGQ38I0tzgDZ30r54mOqzcgTP?usp=share_link) | 128  |      `--cond=0 --arch=ncsnpp --pfgmpp=1 --aug_dim=128`       |
-| ddpmpp-D-128             | [`pfgmpp/cifar10_ncsnpp_D_2048/`](https://drive.google.com/drive/folders/1sZ7vh7o8kuXfFjK8ROWXxtEZi8Srewgo?usp=share_link) | 2048  |      `--cond=0 --arch=ncsnpp --pfgmpp=1 --aug_dim=2048`      |
-| ddpmpp-D-2048 | [`pfgmpp/cifar10_ncsnpp_D_2048_conditional/`](https://drive.google.com/drive/folders/1IADJcuoUb2wc-Dzg42-F8RjgKVSZE-Jd?usp=share_link) | 2048  |      `--cond=1 --arch=ncsnpp --pfgmpp=1 --aug_dim=2048`      |
-| ddpm-ncsnpp-D-inf (EDM)        | [`pfgmpp/cifar10_ncsnpp_D_inf/`](https://drive.google.com/drive/folders/1vDeFtbaz3bBKJIJnZAk7JVrO8GvbFJh5?usp=share_link) | $\infty$ |                   `--cond=0 --arch=ncsnpp`                   |
+| ddpmpp-D-64              | [`PFGMpp_mayo_3mm_weights/D=64/`](https://drive.google.com/drive/folders/1CFNG_9Z3Aag7_C5OUEA5J2aDiighDyV3?usp=drive_link) | 64  |      `--cond=0 --arch=ncsnpp --pfgmpp=1 --aug_dim=128`       |
+| ddpmpp-D-128             | [`PFGMpp_mayo_3mm_weights/D=128/`](https://drive.google.com/drive/folders/1J37uKHXim7f0iWzntie1AFlJHOamHNsZ?usp=drive_link) | 2048  |      `--cond=0 --arch=ncsnpp --pfgmpp=1 --aug_dim=2048`      |
+| ddpmpp-D-2048 | [`PFGMpp_mayo_3mm_weights/D=2048/`](https://drive.google.com/drive/folders/1So7V-EKDIWVfD1xVgxzkJ58mIdJVm5SK?usp=drive_link) | 2048  |      `--cond=1 --arch=ncsnpp --pfgmpp=1 --aug_dim=2048`      |
+| ddpmpp-D-inf (EDM)        | [`PFGMpp_mayo_3mm_weights/D=infty/`](https://drive.google.com/drive/folders/1-1eeJitL3Cg_cYUUoYC81JtT-7UF6sxz?usp=drive_link) | $\infty$ |                   `--cond=0 --arch=ncsnpp`                   |
 
 ## Preparing datasets 
 The Mayo dataset from the AAPM low-dose grand challenge is available [here](https://www.aapm.org/grandchallenge/lowdosect/). 
