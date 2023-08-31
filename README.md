@@ -9,6 +9,8 @@ invertible mapping, via an ordinary differential equation, between an easy-to-sa
 ## Outline
 This implementation is build upon the [PFGM++](https://github.com/Newbeeer/pfgmpp) repo which in turn builds on the [EDM](https://github.com/NVlabs/edm) repo. For transfering hyperparameters from EDM using the $r=\sigma\sqrt{D}$ formula, please see [PFGM++](https://github.com/Newbeeer/pfgmpp). Checkpoints for the [Mayo low-dose CT dataset](https://www.aapm.org/grandchallenge/lowdosect/) are provided in the [checkpoints](#checkpoints) section. (this is a good section to include updates to algorithm)
 
+![schematic](assets/algos.png)
+
 ## Training instructions from PFGM++
 Our approach combines an unconditional generator with a hijacked and regularized sampling scheme to enable posterior sampling. Hence, the training process is identical as in PFGM++/EDM. Therefore we just restate the training instructions from the [PFGM++](https://github.com/Newbeeer/pfgmpp) repo:
 
