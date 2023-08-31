@@ -9,7 +9,25 @@ invertible mapping, via an ordinary differential equation, between an easy-to-sa
 ## Outline
 This implementation is build upon the [PFGM++](https://github.com/Newbeeer/pfgmpp) repo which in turn builds on the [EDM](https://github.com/NVlabs/edm) repo. For transfering hyperparameters from EDM using the $r=\sigma\sqrt{D}$ formula, please see [PFGM++](https://github.com/Newbeeer/pfgmpp). Checkpoints for the [Mayo low-dose CT dataset](https://www.aapm.org/grandchallenge/lowdosect/) are provided in the [checkpoints](#checkpoints) section. (this is a good section to include updates to algorithm)
 
-## Training PFGM++
+## Training instructions from PFGM++
+You can train new models using `train.py`. For example:
+
+```sh
+torchrun --standalone --nproc_per_node=8 train.py --outdir=training-runs --name exp_name \
+--data=datasets/cifar10-32x32.zip --cond=0 --arch=arch \
+--pfgmpp=1 --batch 512 \
+--aug_dim aug_dim (--resume resume_path)
+
+exp_name: name of experiments
+aug_dim: D (additional dimensions)  
+arch: model architectures. options: ncsnpp | ddpmpp
+pfgmpp: use PFGM++ framework, otherwise diffusion models (D\to\infty case). options: 0 | 1
+resume_path: path to the resuming checkpoint
+```
+
+The above example uses the default batch size of 512 images (controlled by `--batch`) that is divided evenly among 8 GPUs (controlled by `--nproc_per_node`) to yield 64 images per GPU. Training large models may run out of GPU memory; the best way to avoid this is to limit the per-GPU batch size, e.g., `--batch-gpu=32`. This employs gradient accumulation to yield the same results as using full per-GPU batches. See [`python train.py --help`](./docs/train-help.txt) for the full list of options.
+
+The results of each training run are saved to a newly created directory  `training-runs/exp_name` . The training loop exports network snapshots `training-state-*.pt`) at regular intervals (controlled by  `--dump`). The network snapshots can be used to generate images with `generate.py`, and the training states can be used to resume the training later on (`--resume`). Other useful information is recorded in `log.txt` and `stats.jsonl`. To monitor training convergence, we recommend looking at the training loss (`"Loss/loss"` in `stats.jsonl`) as well as periodically evaluating FID for `training-state-*.pt` using `generate.py` and `fid.py`.
 
 ## Image denoising using PFGM++
 
