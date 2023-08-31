@@ -54,7 +54,7 @@ python dataset_tool_alt.py --source=./datasets_unzipped/cifar10/ \
     --dest=datasets/mayo_3mm_alt-512x512.zip
 ```
 
-## Instructions for setting up enviorment (from EDM)
+## Instructions for setting up environment (from EDM)
 - Python libraries: See `environment.yml`for exact library dependencies. You can use the following commands with Miniconda3 to create and activate your Python environment:
   - `conda env create -f environment.yml -n edm`
   - `conda activate edm`
