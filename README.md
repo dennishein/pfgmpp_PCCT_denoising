@@ -1,4 +1,4 @@
-# PPFM: Image denoising in photon-counting CT using single-step posterior sampling Poisson flow generative models<br>
+# Noise suppression in photon-counting CT using unsupervised Poisson flow generative models<br>
 
 Pytorch implementation of the paper Noise suppression in photon-counting CT using unsupervised Poisson flow generative models<br>
 by Dennis Hein, Staffan Holmin, Timothy Szczykutowicz, Jonathan S Maltz, Mats Danielsson, Ge Wang and Mats Persson
