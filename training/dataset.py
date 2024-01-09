@@ -314,7 +314,13 @@ class ImageFolderDatasetNpy(Dataset):
                 image = pyspng.load(f.read())
             else:
                 image = np.frombuffer(f.read(),dtype=np.float32) 
-                image = image.reshape(int(np.sqrt(len(image))),int(np.sqrt(len(image)))) # improve this 
+                try:
+                  image = image.reshape(int(np.sqrt(len(image))),int(np.sqrt(len(image)))) # improve this 
+                except ValueError:    
+                  try:
+                    image = image.reshape(512,512,6)  
+                  except ValueError:
+                    image = image.reshape(512,512,2)
         if image.ndim == 2:
             image = image[:, :, np.newaxis] # HW => HWC
         image = image.transpose(2, 0, 1) # HWC => CHW

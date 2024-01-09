@@ -24,6 +24,10 @@ import lpips
 import math
 import cv2
 
+# temp
+import warnings
+warnings.filterwarnings('ignore')
+
 #----------------------------------------------------------------------------
 # Proposed EDM sampler (Algorithm 2).
 
@@ -36,7 +40,6 @@ def edm_sampler(
     sigma_max = 380 # fix this 
     sigma_min = max(sigma_min, net.sigma_min)
     sigma_max = min(sigma_max, net.sigma_max)
-    #print(sigma_max)
     
     # Time step discretization.
     step_indices = torch.arange(num_steps, dtype=torch.float64, device=latents.device)
@@ -44,40 +47,11 @@ def edm_sampler(
     t_steps = torch.cat([net.round_sigma(t_steps), torch.zeros_like(t_steps[:1])]) # t_N = 0
     
     # Main sampling loop.
-    NFE = 0
+    NFE = 0 # sanity chgeck 
     if conditions is not None: # conditional case 
       if hijack > 0:
-        # Forward run 
-        if forward:
-          #x_next = torch.tensor(low_pass(conditions),dtype=torch.float64).to('cuda:0')
-          x_next = conditions.clone().to(torch.float64).to('cuda:0')
-          for i, (t_cur, t_next) in enumerate(zip(reversed(t_steps[(num_steps-hijack-1):-2]), reversed(t_steps[num_steps-hijack:-1]))):
-            x_cur = x_next
-            
-            # Increase noise temporarily.
-            gamma = min(S_churn / num_steps, np.sqrt(2) - 1) if S_min <= t_cur <= S_max else 0
-            t_hat = net.round_sigma(t_cur + gamma * t_cur)
-            x_hat = x_cur + (t_hat ** 2 - t_cur ** 2).sqrt() * S_noise * randn_like(x_cur)
-
-            # Euler step.
-            denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
-            d_cur = (x_hat - denoised) / t_hat
-            x_next = x_hat - (t_next - t_hat) * d_cur
-            NFE += 1
-
-            # Apply 2nd order correction. 
-            if i > 0:
-                denoised = net(x_next, t_next, class_labels).to(torch.float64)
-                d_prime = (x_next - denoised) / t_next
-                x_next = x_hat - (t_next - t_hat) * (0.5 * d_cur + 0.5 * d_prime)
-                NFE += 1
-              
-        else:
-            #x_next = torch.tensor(low_pass(conditions),dtype=torch.float64).to('cuda:0')
-            #x_next = tv_batch(conditions)
-            x_next = conditions.clone().to(torch.float64).to('cuda:0')
+        x_next = conditions.clone().to(torch.float64).to('cuda:0')
         # Reverse run 
-        pbar = tqdm.tqdm(total=hijack)
         for i, (t_cur, t_next) in enumerate(zip(t_steps[(num_steps-hijack-1):-2], t_steps[num_steps-hijack:-1])):
           x_cur = x_next
             
@@ -87,7 +61,11 @@ def edm_sampler(
           x_hat = x_cur + (t_hat ** 2 - t_cur ** 2).sqrt() * S_noise * randn_like(x_cur)
             
           # Euler step.
-          denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
+          if uncond_score:
+            denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
+          else:
+            denoised = net(torch.cat((conditions,x_hat),1), t_hat, class_labels).to(torch.float64)
+            
           d_cur = (x_hat - denoised) / t_hat
           x_next = x_hat + (t_next - t_hat) * d_cur
           NFE += 1
@@ -95,53 +73,23 @@ def edm_sampler(
           # Apply 2nd order correction.
           final_step = hijack 
           if i < final_step - 1:
-              denoised = net(x_next, t_next, class_labels).to(torch.float64)
+              if uncond_score:
+                denoised = net(x_next, t_next, class_labels).to(torch.float64)
+              else:
+                denoised = net(torch.cat((conditions,x_next),1), t_hat, class_labels).to(torch.float64)
               d_prime = (x_next - denoised) / t_next
               x_next = x_hat + (t_next - t_hat) * (0.5 * d_cur + 0.5 * d_prime)
               NFE += 1
           
           # Data consistency step
-          #x_next = x_next*weight+torch.tensor(low_pass(conditions),dtype=torch.float64).to('cuda:0')*(1-weight)
-          #x_next = x_next*weight+tv_batch(conditions)*(1-weight)
           x_next = x_next*weight+conditions.clone().to(torch.float64).to('cuda:0')*(1-weight)
-          pbar.update(1)
-        pbar.close()
          
       else: # no hijack 
-        if forward:
-          #x_next = torch.tensor(low_pass(conditions),dtype=torch.float64).to('cuda:0')
-          x_next = conditions.clone().to(torch.float64).to('cuda:0')
-          #if pfgmpp:
-          #  x_next = torch.tensor(low_pass(conditions), dtype=torch.float64).to('cuda:0')+latents.to(torch.float64)
-          #else:
-          #  #x_next = torch.tensor(conditions, dtype=torch.float64).to('cuda:0')+latents.to(torch.float64)*t_steps[num_steps-hijack-1] 
-          #  x_next = conditions.clone().to('cuda:0')+latents.to(torch.float64)*t_steps[num_steps-hijack-1] 
-          for i, (t_cur, t_next) in enumerate(zip(reversed(t_steps[(num_steps-1):-2]), reversed(t_steps[num_steps:-1]))):
-            x_cur = x_next
-            
-            # Increase noise temporarily.
-            gamma = min(S_churn / num_steps, np.sqrt(2) - 1) if S_min <= t_cur <= S_max else 0
-            t_hat = net.round_sigma(t_cur + gamma * t_cur)
-            x_hat = x_cur + (t_hat ** 2 - t_cur ** 2).sqrt() * S_noise * randn_like(x_cur)
-
-            # Euler step.
-            denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
-            d_cur = (x_hat - denoised) / t_hat
-            x_next = x_hat - (t_next - t_hat) * d_cur
-            NFE += 1
-
-            # Apply 2nd order correction. 
-            if 1==2:#i > 0:
-                denoised = net(x_next, t_next, class_labels).to(torch.float64)
-                d_prime = (x_next - denoised) / t_next
-                x_next = x_hat - (t_next - t_hat) * (0.5 * d_cur + 0.5 * d_prime)
-                NFE += 1
+        if pfgmpp:
+          x_next = latents.to(torch.float64) 
         else:
-          if pfgmpp:
-            x_next = latents.to(torch.float64) 
-          else:
-            x_next = latents.to(torch.float64) * t_steps[0]
-        pbar = tqdm.tqdm(total=num_steps)
+          x_next = latents.to(torch.float64) * t_steps[0]
+        
         for i, (t_cur, t_next) in enumerate(zip(t_steps[:-1], t_steps[1:])): # 0, ..., N-1
             x_cur = x_next
 
@@ -151,29 +99,32 @@ def edm_sampler(
             x_hat = x_cur + (t_hat ** 2 - t_cur ** 2).sqrt() * S_noise * randn_like(x_cur)
 
             # Euler step.
-            denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
+            if uncond_score:
+              denoised = net(x_hat, t_hat, class_labels).to(torch.float64)
+            else:
+              denoised = net(torch.cat((conditions,x_hat),1), t_hat, class_labels).to(torch.float64)
             d_cur = (x_hat - denoised) / t_hat
             x_next = x_hat + (t_next - t_hat) * d_cur
             NFE += 1
 
             # Apply 2nd order correction.
             if i < num_steps - 1:
-                denoised = net(x_next, t_next, class_labels).to(torch.float64)
+                if uncond_score:
+                  denoised = net(x_next, t_next, class_labels).to(torch.float64)
+                else:
+                  denoised = net(torch.cat((conditions,x_next),1), t_hat, class_labels).to(torch.float64)
                 d_prime = (x_next - denoised) / t_next
                 x_next = x_hat + (t_next - t_hat) * (0.5 * d_cur + 0.5 * d_prime)
                 NFE += 1
              
             # Data consistency step
-            x_next = x_next*weight+torch.tensor(low_pass(conditions), dtype=torch.float64).to('cuda:0')*(1-weight)
-            pbar.update(1)
-        pbar.close()
-        
+            x_next = x_next*weight+torch.tensor(low_pass(conditions), dtype=torch.float64).to('cuda:0')*(1-weight)        
     else: # unconditional case 
       if pfgmpp:
         x_next = latents.to(torch.float64)
       else:
         x_next = latents.to(torch.float64) * t_steps[0]
-      pbar = tqdm.tqdm(total=num_steps)
+      
       for i, (t_cur, t_next) in enumerate(zip(t_steps[:-1], t_steps[1:])): # 0, ..., N-1
           x_cur = x_next
 
@@ -192,11 +143,7 @@ def edm_sampler(
               denoised = net(x_next, t_next, class_labels).to(torch.float64)
               d_prime = (x_next - denoised) / t_next
               x_next = x_hat + (t_next - t_hat) * (0.5 * d_cur + 0.5 * d_prime)
-          pbar.update(1)
-      pbar.close()    
 
-    #return torch.tensor(low_pass(x_next), dtype=torch.float64).to('cuda:0')
-    print(f'NFE: {NFE}')
     return x_next
 #----------------------------------------------------------------------------
 # Generalized ablation sampler, representing the superset of all sampling
@@ -381,7 +328,6 @@ def parse_int_list(s):
 
 #----------------------------------------------------------------------------
 # Auxiliary functions 
-
 def map_to_zero_one_alt(X, min_v = None, max_v = None, return_vals=False):
   if min_v == None:
       min_val = X.min()
@@ -431,18 +377,6 @@ def get_data_inverse_scaler(data_centered):
   else:
     return lambda x: x
     
-def tv_batch(data,weight=42):
-  temp = data.clone()
-  for i in range(data.size(0)):
-    temp[i,0,:,:] = torch.tensor(denoise_tv_bregman(data[i,0,:,:].detach().cpu().numpy(),weight=weight),dtype=torch.float64).to('cuda:0')
-  return temp
-
-def bm3d_batch(data,sigma=0.01899014785885811):
-  temp = data.clone()
-  for i in range(data.size(0)):
-    temp[i,0,:,:] = torch.tensor(bm3d.bm3d(data[i,0,:,:].detach().cpu().numpy(),sigma_psd=sigma),dtype=torch.float64).to('cuda:0')
-  return temp
-
 def low_pass(data,cutoff=256):
     data = data.detach().cpu().numpy()
     # generate box
@@ -460,11 +394,60 @@ def low_pass(data,cutoff=256):
     ift = np.fft.ifft2(ift)
     ift = np.fft.fftshift(ift)
     return ift.real
+
+# SSIM from https://github.com/GBATZOLIS/conditional_score_diffusion
+def ssim(img1, img2):
+    C1 = (0.01 * 1)**2
+    C2 = (0.03 * 1)**2
+
+    img1 = img1.astype(np.float64)
+    img2 = img2.astype(np.float64)
+    kernel = cv2.getGaussianKernel(11, 1.5)
+    window = np.outer(kernel, kernel.transpose())
+
+    mu1 = cv2.filter2D(img1, -1, window)[5:-5, 5:-5] 
+    mu2 = cv2.filter2D(img2, -1, window)[5:-5, 5:-5]
+    mu1_sq = mu1**2
+    mu2_sq = mu2**2
+    mu1_mu2 = mu1 * mu2
+    sigma1_sq = cv2.filter2D(img1**2, -1, window)[5:-5, 5:-5] - mu1_sq
+    sigma2_sq = cv2.filter2D(img2**2, -1, window)[5:-5, 5:-5] - mu2_sq
+    sigma12 = cv2.filter2D(img1 * img2, -1, window)[5:-5, 5:-5] - mu1_mu2
+
+    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) *
+                                                            (sigma1_sq + sigma2_sq + C2))
+    return ssim_map.mean()
+
+def SSIM(img1, img2):
+    '''calculate SSIM
+    the same outputs as MATLAB's
+    img1, img2: [0, 1]
+    '''
+    if not img1.shape == img2.shape:
+        raise ValueError('Input images must have the same dimensions.')
+    if img1.ndim == 2:
+        return ssim(img1, img2)
+    elif img1.ndim == 3:
+        if img1.shape[2] == 3:
+            ssims = []
+            for i in range(3):
+                ssims.append(ssim(img1[:,:,i], img2[:,:,i]))
+            return np.array(ssims).mean()
+        elif img1.shape[2] == 1:
+            return ssim(np.squeeze(img1), np.squeeze(img2))
+    else:
+        raise ValueError('Wrong input image dimensions.')
+
+def psnr(gt, img):
+    """ PSNR values expected in [0,1]"""
+    mse = np.mean(np.square((gt - img)))
+    return 20 * np.log10(1) - 10 * np.log10(mse)
+
 #----------------------------------------------------------------------------
 
 @click.command()
 @click.option('--network', 'network_pkl',  help='Network pickle filename', metavar='PATH|URL',                      type=str, required=True)
-@click.option('--minmax',                  help='Where the saved minmax is located', metavar='PATH',                type=str, default='train_mayo_1_minmax',show_default=True)
+@click.option('--minmax','saved_minmax',   help='Where the saved minmax is located', metavar='PATH',                type=str, default=None,show_default=True)
 @click.option('--data',                    help='Where the condition data is located', metavar='PATH',              type=str, default=None,show_default=True)
 @click.option('--seeds',                   help='Random seeds (e.g. 1,2,5-10)', metavar='LIST',                     type=parse_int_list, default='0-63', show_default=True)
 @click.option('--subdirs',                 help='Create subdirectory for every 1000 seeds',                         is_flag=True)
@@ -474,7 +457,6 @@ def low_pass(data,cutoff=256):
 @click.option('--steps', 'num_steps',      help='Number of sampling steps', metavar='INT',                          type=click.IntRange(min=1), default=18, show_default=True)
 @click.option('--hijack',                  help='Number of sampling steps', metavar='INT',                          type=click.IntRange(min=0), default=0, show_default=True)
 @click.option('--hijack_ext',              help='Number of sampling steps', metavar='INT',                          type=click.IntRange(min=0), default=0, show_default=True)
-@click.option('--n_ch',              help='Number of channels in data', metavar='INT',                          type=click.IntRange(min=0), default=1, show_default=True)
 @click.option('--forward',                 help='Enable forward diffusion with hijacked', metavar='BOOL',                    type=bool, default=False, show_default=True)
 @click.option('--uncond_score',                 help='Conditional via unconditional score function', metavar='BOOL',                    type=bool, default=False, show_default=True)
 @click.option('--weight',                  help='Weight in data consistency step', metavar='FLOAT',                 type=click.FloatRange(min=0, min_open=True), default=1.0, show_default=True)
@@ -491,7 +473,7 @@ def low_pass(data,cutoff=256):
 @click.option('--scaling',                 help='Ablate signal scaling s(t)', metavar='vp|none',                    type=click.Choice(['vp', 'none']))
 @click.option('--aug_dim',             help='additional dimension', metavar='INT',                            type=click.IntRange(min=2), default=None, show_default=True)
 
-def main(network_pkl, data, minmax, hijack, hijack_ext, n_ch, forward, weight, uncond_score, aug_dim, subdirs, seeds, class_idx, max_batch_size, device=torch.device('cuda'), **sampler_kwargs):
+def main(network_pkl, data, saved_minmax, hijack, hijack_ext, forward, weight, uncond_score, aug_dim, subdirs, seeds, class_idx, max_batch_size, device=torch.device('cuda'), **sampler_kwargs):
     """Generate random images using the techniques described in the paper
     "Elucidating the Design Space of Diffusion-Based Generative Models".
 
@@ -509,7 +491,7 @@ def main(network_pkl, data, minmax, hijack, hijack_ext, n_ch, forward, weight, u
     """
     
     loss_fn_alex = lpips.LPIPS(net='alex').to('cuda').to(torch.float64) 
-    
+        
     # Set up PFGM++ / EDM
     use_pickle = 0
     pfgmpp = 0
@@ -520,17 +502,26 @@ def main(network_pkl, data, minmax, hijack, hijack_ext, n_ch, forward, weight, u
       #sigma_max = 380./80 
       
     # Set up conditioning data
-    minmax = torch.load('./datasets_unzipped/'+minmax+'.pt')
+    if saved_minmax is not None:
+      minmax = torch.load('./datasets_unzipped/'+saved_minmax+'.pt')
+    else:
+      minmax = torch.zeros(2)
+    #print(minmax)
     if data is not None:
       conditions = torch.load('./datasets_unzipped/'+data+'.pt') # temporary 
       if conditions.size(1) == 1:
         conditions = torch.cat((conditions,conditions),1)
-      conditions = map_to_zero_one_alt(conditions,minmax[0],minmax[1])
+      if saved_minmax is not None:
+        conditions = map_to_zero_one_alt(conditions,minmax[0],minmax[1])
+
+      n_ch = conditions.size(1)//2
       seeds = [0]*conditions.size(0) # override seeds option and run same for each sample
       conditions_iterator = iter(torch.utils.data.DataLoader(dataset=conditions,batch_size=max_batch_size))
       scaler = get_data_scaler(True)
       get_image_metrics = False
       if 'mayo' in data.split('_'):
+        get_image_metrics = True
+      elif 'priors' in data.split('_'):
         get_image_metrics = True
     inv_scaler = get_data_inverse_scaler(True)
     
@@ -580,6 +571,9 @@ def main(network_pkl, data, minmax, hijack, hijack_ext, n_ch, forward, weight, u
     count = 1 
     list_count = 1
     lpips_list = []
+    ssim_list = []
+    psnr_list = []
+    sample = torch.tensor([])
     for batch_seeds in tqdm.tqdm(rank_batches, unit='batch', disable=(dist.get_rank() != 0)):
         torch.distributed.barrier()
         batch_size = len(batch_seeds)
@@ -591,6 +585,9 @@ def main(network_pkl, data, minmax, hijack, hijack_ext, n_ch, forward, weight, u
         res = net.img_resolution
         if data is not None:
           conditions = next(conditions_iterator).to(device).to(torch.float64)
+          if saved_minmax is None:
+            assert conditions.size(0) == 1 # for now 
+            conditions, minmax[0], minmax[1] = map_to_zero_one_alt(conditions,return_vals=True)
           conditions = scaler(conditions)
           res = conditions.size(-1)
           
@@ -598,14 +595,14 @@ def main(network_pkl, data, minmax, hijack, hijack_ext, n_ch, forward, weight, u
         N = net.img_channels * res * res
         rnd = StackedRandomGenerator(device, batch_seeds)
         if pfgmpp:
-            latents = rnd.rand_beta_prime([batch_size, 1, res, res],
+            latents = rnd.rand_beta_prime([batch_size, n_ch, res, res],
                                 N=N,
                                 D=aug_dim,
                                 pfgmpp=pfgmpp,
                                 device=device,
                                 sigma_max=sigma_max) #if (N > 256 * 256 * 3) else 80)
         else:
-            latents = rnd.randn([batch_size, 1, res, res],
+            latents = rnd.randn([batch_size, n_ch, res, res],
                                 device=device)
          
         class_labels = None
@@ -620,7 +617,7 @@ def main(network_pkl, data, minmax, hijack, hijack_ext, n_ch, forward, weight, u
         have_ablation_kwargs = any(x in sampler_kwargs for x in ['solver', 'discretization', 'schedule', 'scaling'])
         sampler_fn = ablation_sampler if have_ablation_kwargs else edm_sampler
         if data is not None:
-          images = sampler_fn(net, latents, conditions[:,0:1,:,:], hijack, hijack_ext, forward, weight, uncond_score, pfgmpp, class_labels, randn_like=rnd.randn_like, **sampler_kwargs)
+          images = sampler_fn(net, latents, conditions[:,0:n_ch,:,:], hijack, hijack_ext, forward, weight, uncond_score, pfgmpp, class_labels, randn_like=rnd.randn_like, **sampler_kwargs)
         else:
           images = sampler_fn(net, latents, None, hijack, hijack_ext, forward, weight, uncond_score, pfgmpp, class_labels, randn_like=rnd.randn_like, **sampler_kwargs)
         
@@ -629,7 +626,9 @@ def main(network_pkl, data, minmax, hijack, hijack_ext, n_ch, forward, weight, u
           if data is not None:
               for i in range(images.size(0)):
                 lpips_list.append((loss_fn_alex(images[i,0,:,:],conditions[i,1,:,:].to(torch.float64))).detach().cpu().item())   
-                print(f'Slice: {list_count} LPIPS: {lpips_list[list_count-1]}')
+                ssim_list.append((ssim(inv_scaler(images[i,0,:,:]).detach().cpu().numpy(),inv_scaler(conditions[i,1,:,:].to(torch.float64)).detach().cpu().numpy())).item())  
+                psnr_list.append((psnr(inv_scaler(images[i,0,:,:]).detach().cpu().numpy(),inv_scaler(conditions[i,1,:,:].to(torch.float64)).detach().cpu().numpy())).item())  
+                #print(f'Slice: {list_count} LPIPS: {lpips_list[list_count-1]} SSIM: {ssim_list[list_count-1]} PSNR: {psnr_list[list_count-1]}')
                 list_count += 1
                 
         # Convert back to HU
@@ -649,78 +648,30 @@ def main(network_pkl, data, minmax, hijack, hijack_ext, n_ch, forward, weight, u
         #        PIL.Image.fromarray(image_np[:, :, 0], 'L').save(image_path)
         #    else:
         #        PIL.Image.fromarray(image_np, 'RGB').save(image_path)
+        sample = torch.cat((sample,images.detach().cpu()),dim=0)
        
-        # Save images.
-        if data is not None:
-          for i in range(images.size(0)):
-            # dcm used as dummy 
-            ds = load_dcm(fix_dicom_index(str(count),6),'./dicoms/i')
-            ds.Rows = images.size(2)
-            ds.Columns = images.size(3)
-
-            if conditions.size(1) > 1:
-              for j in range(n_ch):
-                image_dir = os.path.join(outdir,'DL100')
-                os.makedirs(image_dir, exist_ok=True)
-                temp = np.array(images[i,j,:,:].detach().cpu(),dtype=np.int16)
-                ds.PixelData = temp.tobytes()
-                ds.save_as(image_dir+'/'+str(count)+'_DL100.dcm')
-
-                image_dir = os.path.join(outdir,'obs')
-                os.makedirs(image_dir, exist_ok=True)
-                temp = np.array(conditions[i,j,:,:].detach().cpu(),dtype=np.int16)
-                ds.PixelData = temp.tobytes()
-                ds.save_as(image_dir+'/'+str(count)+'.dcm')
-
-                image_dir = os.path.join(outdir,'diff')
-                os.makedirs(image_dir, exist_ok=True)
-                temp = np.array(images[i,j,:,:].detach().cpu()-conditions[i,j,:,:].detach().cpu(),dtype=np.int16)
-                ds.PixelData = temp.tobytes()
-                ds.save_as(image_dir+'/'+str(count)+'_diff.dcm')
-
-                image_dir = os.path.join(outdir,'truth')
-                os.makedirs(image_dir, exist_ok=True)
-                temp = np.array(conditions[i,j+n_ch,:,:].detach().cpu(),dtype=np.int16)
-                ds.PixelData = temp.tobytes()
-                ds.save_as(image_dir+'/'+str(count)+'_truth.dcm') 
-                count += 1  
-            else:
-              image_dir = os.path.join(outdir,'DL100')
-              os.makedirs(image_dir, exist_ok=True)
-              temp = np.array(images[i,0,:,:].detach().cpu(),dtype=np.int16)
-              ds.PixelData = temp.tobytes()
-              ds.save_as(image_dir+'/'+str(count)+'_DL100.dcm')
-
-              image_dir = os.path.join(outdir,'obs')
-              os.makedirs(image_dir, exist_ok=True)
-              temp = np.array(conditions[i,0,:,:].detach().cpu(),dtype=np.int16)
-              ds.PixelData = temp.tobytes()
-              ds.save_as(image_dir+'/'+str(count)+'.dcm')
-              count += 1
-        else:
-          for i in range(images.size(0)):
-            # dcm used as dummy 
-            ds = load_dcm(fix_dicom_index(str(count),6),'./dicoms/i')
-            ds.Rows = images.size(2)
-            ds.Columns = images.size(3)
-          
-            image_dir = outdir #os.path.join(outdir,'unconditional')
-            os.makedirs(image_dir, exist_ok=True)
-            temp = np.array(images[i,0,:,:].detach().cpu(),dtype=np.int16)
-            ds.PixelData = temp.tobytes()
-            ds.save_as(image_dir+'/'+str(count)+'.dcm')
-     
-            count += 1
-
+    # Save images.
+    os.makedirs(outdir, exist_ok=True)
+    torch.save(sample,outdir+'/sample.pt')
+        
     if get_image_metrics:
       lpips_avg = sum(lpips_list)/len(lpips_list)
-
-      print('*************************')
-      print('*************************')
-      print(f'Mean LPIPS: {lpips_avg}')
-      print('*************************')
-      print('*************************')
-    
+      ssim_avg = sum(ssim_list)/len(ssim_list)
+      psnr_avg = sum(psnr_list)/len(psnr_list)
+            
+      f = open(outdir+"/output.txt", "a")
+      f.seek(0)
+      f.truncate()                              
+      print('*************************',file=f)
+      print('*************************',file=f)
+      print(f'Current results. D: {aug_dim} T: {n_steps} tau: {hijack} weight: {weight}',file=f)
+      print(f'Mean LPIPS: {lpips_avg}',file=f)
+      print(f'Mean SSIM: {ssim_avg}',file=f)
+      print(f'Mean PSNR: {psnr_avg}',file=f)
+      print('*************************',file=f)
+      print('*************************',file=f)
+      f.close()
+        
     # Done.
     torch.distributed.barrier()
     dist.print0('Done.')

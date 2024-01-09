@@ -85,6 +85,7 @@ def get_info(data):
 def training_loop(
     run_dir             = '.',      # Output directory.
     dataset_kwargs      = {},       # Options for training set.
+    dataset_n_kwargs    = {},       # Options for training noise set.
     data_loader_kwargs  = {},       # Options for torch.utils.data.DataLoader.
     network_kwargs      = {},       # Options for model and preconditioning.
     loss_kwargs         = {},       # Options for loss function.
@@ -140,6 +141,10 @@ def training_loop(
 
     # Load dataset.
     dist.print0('Loading dataset...')
+    if len(dataset_n_kwargs)>0 and dataset_kwargs.path != dataset_n_kwargs.path:
+      dataset_n_obj = dnnlib.util.construct_class_by_name(**dataset_n_kwargs) # subclass of training.dataset.Dataset
+      dataset_n_sampler = misc.InfiniteSampler(dataset=dataset_n_obj, rank=dist.get_rank(), num_replicas=dist.get_world_size(), seed=seed)
+      dataset_n_iterator = iter(torch.utils.data.DataLoader(dataset=dataset_n_obj, sampler=dataset_n_sampler, batch_size=batch_gpu, **data_loader_kwargs))
     dataset_obj = dnnlib.util.construct_class_by_name(**dataset_kwargs) # subclass of training.dataset.Dataset
     dataset_sampler = misc.InfiniteSampler(dataset=dataset_obj, rank=dist.get_rank(), num_replicas=dist.get_world_size(), seed=seed)
     dataset_iterator = iter(torch.utils.data.DataLoader(dataset=dataset_obj, sampler=dataset_sampler, batch_size=batch_gpu, **data_loader_kwargs))
@@ -153,12 +158,24 @@ def training_loop(
     else:
       interface_kwargs = dict(img_resolution=dataset_obj.resolution, img_channels=dataset_obj.num_channels, label_dim=dataset_obj.label_dim,
                              pfgmpp=pfgmpp, D=D)
+    if len(dataset_n_kwargs) >0:
+      if  dataset_kwargs.path == dataset_n_kwargs.path:
+        interface_kwargs['img_channels'] = dataset_obj.num_channels // 2
+    #print(network_kwargs)
+    #print(interface_kwargs)
+    #assert 1 == 2
     net = dnnlib.util.construct_class_by_name(**network_kwargs, **interface_kwargs) # subclass of torch.nn.Module
+    #print(net)
+    #print(net.img_channels)
+    #assert 1 == 2
     net.train().requires_grad_(True).to(device)
     if dist.get_rank() == 0:
         B = batch_size // dist.get_world_size()
         with torch.no_grad():
-            images = torch.zeros([B, net.img_channels, net.img_resolution, net.img_resolution], device=device)
+            if len(dataset_n_kwargs)>0:
+              images = torch.zeros([B, net.img_channels*2, net.img_resolution, net.img_resolution], device=device)
+            else:
+              images = torch.zeros([B, net.img_channels, net.img_resolution, net.img_resolution], device=device)
             sigma = torch.ones([B], device=device)
             labels = torch.zeros([B, net.label_dim], device=device)
             misc.print_module_summary(net, [images, sigma, labels], max_nesting=2)
@@ -218,13 +235,20 @@ def training_loop(
         optimizer.zero_grad(set_to_none=True)
         for round_idx in range(num_accumulation_rounds):
             with misc.ddp_sync(ddp, (round_idx == num_accumulation_rounds - 1)):
-                images, labels = next(dataset_iterator)
-                print(images.size())
-                #images = images.to(device).to(torch.float32) / 127.5 - 1
-                images = scaler(images) #.to(device).to(torch.float32)
-                labels = labels.to(device)
-                if patch_sz is not None: 
+                if len(dataset_n_kwargs)>0 and dataset_kwargs.path != dataset_n_kwargs.path:
+                  images, labels = next(dataset_iterator)
+                  noise, labels = next(dataset_n_iterator) 
+                  labels = labels.to(device)
+                  images = scaler(torch.cat((images+weight_n*noise,images),dim=1))
+                  if patch_sz is not None:
                     images = sample_patch(images,batch_size,patch_sz,n_patches,device='cpu',augment_pipe=augment_pipe)
+                else:
+                  images, labels = next(dataset_iterator)
+                  #images = images.to(device).to(torch.float32) / 127.5 - 1
+                  images = scaler(images) #.to(device).to(torch.float32)
+                  labels = labels.to(device)
+                  if patch_sz is not None: 
+                      images = sample_patch(images,batch_size,patch_sz,n_patches,device='cpu',augment_pipe=augment_pipe)
                 if stf:
                     # divide the mini-batch by the device number
                     # per-device 128 samples
